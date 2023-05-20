@@ -20,32 +20,59 @@ const client = new MongoClient(uri, {
     strict: true,
     deprecationErrors: true,
   },
-  
+
 });
 
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-  
+
     // await client.connect();
 
     const toyCollection = client.db("toyStore").collection("toys");
 
-    app.get('/toys', async (req, res) => {
-        const cursor = toyCollection.find();
-        const result = await cursor.toArray();
-        res.send(result); 
+    // search option in my toys
+    const indexKeys = { title: 1, category:1};
+    const indexOptions = { name: "toyNameSubCategory" };                                      
+    const result = await toyCollection.createIndex(indexKeys, indexOptions);
+
+    app.get('/toySearchByTitle/:text', async(req, res) => {
+      const searchText = req.params.text;
+      const result = await toyCollection.find({
+        $or: [
+          { toyName: { $regex: searchText, $options: 'i' } },
+          { subCategory: { $regex: searchText, $options: 'i' } },
+        ],
+      })
+      .toArray();
+      res.send(result);
+
     })
 
-   
+
+    app.get('/toys', async (req, res) => {
+      const cursor = toyCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    })
+
+    app.get('/mytoys/:email', async (req, res) => {
+      // console.log(req.params.email)
+      const result = await toyCollection
+      .find({ sellerEmail: req.params.email })
+      .toArray();
+      res.send(result);
+    });
 
     app.post('/addAToy', async (req, res) => {
-        const newToy = req.body;
-        console.log(newToy)
-        const result = await toyCollection.insertOne(newToy);
-        console.log('got new toy', result)
-        res.send(result)
+      const newToy = req.body;
+      console.log(newToy)
+      const result = await toyCollection.insertOne(newToy);
+      console.log('got new toy', result)
+      res.send(result)
     })
+
+
 
 
 
@@ -64,9 +91,9 @@ run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-    res.send('toy store server is running')
+  res.send('toy store server is running')
 })
 
 app.listen(port, () => {
-    console.log(`Toy Store Server is running on port ${port}`)
+  console.log(`Toy Store Server is running on port ${port}`)
 })
