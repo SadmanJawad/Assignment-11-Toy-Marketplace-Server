@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express();
 const port = process.env.PORT || 5000;
@@ -32,11 +32,11 @@ async function run() {
     const toyCollection = client.db("toyStore").collection("toys");
 
     // search option in my toys
-    const indexKeys = { title: 1, category:1};
-    const indexOptions = { name: "toyNameSubCategory" };                                      
+    const indexKeys = { title: 1, category: 1 };
+    const indexOptions = { name: "toyNameSubCategory" };
     const result = await toyCollection.createIndex(indexKeys, indexOptions);
 
-    app.get('/toySearchByTitle/:text', async(req, res) => {
+    app.get('/toySearchByTitle/:text', async (req, res) => {
       const searchText = req.params.text;
       const result = await toyCollection.find({
         $or: [
@@ -44,7 +44,7 @@ async function run() {
           { subCategory: { $regex: searchText, $options: 'i' } },
         ],
       })
-      .toArray();
+        .toArray();
       res.send(result);
 
     })
@@ -59,41 +59,68 @@ async function run() {
     app.get('/mytoys/:email', async (req, res) => {
       // console.log(req.params.email)
       const result = await toyCollection
-      .find({ sellerEmail: req.params.email })
-      .toArray();
+        .find({ sellerEmail: req.params.email })
+        .toArray();
       res.send(result);
     });
 
-    app.post('/addAToy', async (req, res) => {
-      const newToy = req.body;
-      console.log(newToy)
-      const result = await toyCollection.insertOne(newToy);
-      console.log('got new toy', result)
-      res.send(result)
-    })
+    app.get('/toys/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await toyCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.put('/toys/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedToy = req.body;
+      const toy = {
+        $set: {
+          pictureUrl: updatedToy.pictureUrl,
+          name: updatedToy.name,
+          price: updatedToy.price,
+          rating: updatedToy.rating,
+          availableQuantity: updatedToy.availableQuantity,
+          description: updatedToy.description,
+        }
+      }
+      const result = await toyCollection.updateOne(filter, toy, options);
+      res.send(result);
+    });
+
+
+      app.post('/addAToy', async (req, res) => {
+        const newToy = req.body;
+        console.log(newToy)
+        const result = await toyCollection.insertOne(newToy);
+        console.log('got new toy', result)
+        res.send(result)
+      })
 
 
 
 
 
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
+      // Send a ping to confirm a successful connection
+      await client.db("admin").command({ ping: 1 });
+      console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    } finally {
+      // Ensures that the client will close when you finish/error
+      // await client.close();
+    }
   }
-}
 run().catch(console.dir);
 
 
 
 
 
-app.get('/', (req, res) => {
-  res.send('toy store server is running')
-})
+  app.get('/', (req, res) => {
+    res.send('toy store server is running')
+  })
 
-app.listen(port, () => {
-  console.log(`Toy Store Server is running on port ${port}`)
-})
+  app.listen(port, () => {
+    console.log(`Toy Store Server is running on port ${port}`)
+  })
