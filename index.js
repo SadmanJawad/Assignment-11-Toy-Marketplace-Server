@@ -31,23 +31,19 @@ async function run() {
 
     const toyCollection = client.db("toyStore").collection("toys");
 
-    // search option in my toys
-    const indexKeys = { title: 1, category: 1 };
-    const indexOptions = { name: "toyNameSubCategory" };
-    const result = await toyCollection.createIndex(indexKeys, indexOptions);
 
-    app.get('/toySearchByTitle/:text', async (req, res) => {
-      const searchText = req.params.text;
-      const result = await toyCollection.find({
-        $or: [
-          { toyName: { $regex: searchText, $options: 'i' } },
-          { subCategory: { $regex: searchText, $options: 'i' } },
-        ],
-      })
-        .toArray();
-      res.send(result);
-
-    })
+    // all toys by category
+    app.get('/toys/tabs/:category', async (req, res) => {
+      try {
+          const category = req.params.category;
+          const query = { subCategory: { $regex: category, $options: 'i' } };
+          const result = await toyCollection.find(query).toArray();
+          res.send(result);
+      } catch (error) {
+          console.error('Error fetching toys by sub-category:', error);
+          res.status(500).json({ error: 'Failed to fetch toys by sub-category' });
+   }
+});
 
 
     app.get('/toys', async (req, res) => {
@@ -55,6 +51,7 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     })
+
 
     app.get('/mytoys/:email', async (req, res) => {
       // console.log(req.params.email)
@@ -64,13 +61,13 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/toys/:id', async (req, res) => {
+    app.get('/filteredToys/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await toyCollection.findOne(query);
       res.send(result);
     });
-
+// update
     app.put('/toys/:id', async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -90,7 +87,16 @@ async function run() {
       res.send(result);
     });
 
+    app.delete('/toys/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await toyCollection.deleteOne(query);
+      res.send(result);
+    });
 
+
+
+   //add data to database
       app.post('/addAToy', async (req, res) => {
         const newToy = req.body;
         console.log(newToy)
